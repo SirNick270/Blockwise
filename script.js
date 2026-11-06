@@ -1,4 +1,5 @@
 "use strict";
+import { hapticTrigger } from "https://esm.sh/ios-haptics@3.3.0";
 
 /* ============ 1. DATOS: las piezas ============ */
 const N = 8; // tamaño del tablero
@@ -302,10 +303,10 @@ function onUp(e) {
     let gained = result.blocks;
 
     if (result.lines > 0) {
-        combo++;
+        combo += result.lines;
         misses = 0;
 
-        gained += 10 * result.lines ** 2 * Math.min(combo, 8);
+        gained += 10 * result.lines ** 2 * combo;
 
         if (result.allClear) gained += 300;
     } else if (combo > 0) {
@@ -356,3 +357,5 @@ newGame();
 document.addEventListener("touchmove", e => {
     e.preventDefault();
 }, { passive: false });
+
+hapticTrigger($("haptic-test"));
