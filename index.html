@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+        <title>Bloques</title>
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <header class="w">
+        <h1>Bloques</h1>
+        <div class="stat">Puntos<b id="score">0</b></div>
+        <div class="stat">Récord<b id="best">0</b></div>
+        </header>
+        <div id="board" class="w"></div>
+        <div id="tray" class="w"></div>
+        <div class="bar w">
+        <span id="seed"></span>
+        <span><button class="alt" id="daily">Partida diaria</button> <button id="new">Nueva</button></span>
+        </div>
+        <div id="over" hidden>
+        <b>Fin de la partida</b><span id="final"></span>
+        <button id="again">Jugar otra vez</button>
+        </div>
+
+        <script src="script.js"></script>
+    </body>
+</html>

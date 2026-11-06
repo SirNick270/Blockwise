@@ -1,0 +1,157 @@
+:root {
+    --bg: #e8eaf4;
+    --panel: #cfd4ea;
+    --cell: #e3e6f5;
+    --text: #1c2142;
+    --muted: #5b6285;
+    color-scheme: light;
+}
+
+@media (prefers-color-scheme:dark) {
+    :root {
+        --bg: #12152b;
+        --panel: #1c2142;
+        --cell: #272e5a;
+        --text: #eceefb;
+        --muted: #9097c2;
+        color-scheme: dark;
+    }
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding: max(16px,env(safe-area-inset-top)) 16px 24px;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.4 ui-rounded,system-ui,sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.w { width: min(92vw,420px); }
+
+header { 
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+h1 {
+    margin: 0;
+    font-size: 26px;
+    letter-spacing: -.02em;
+}
+
+.stat {
+    text-align:right;
+    font-size:13px;
+    color:var(--muted);
+}
+
+.stat b {
+    display: block;
+    font-size: 22px;
+    color:var(--text);
+    font-variant-numeric:tabular-nums;
+}
+
+#board {
+    display: grid;
+    grid-template-columns: repeat(8,1fr);
+    gap: 3px;
+    padding: 6px;
+    aspect-ratio: 1;
+    background: var(--panel);
+    border-radius: 14px;
+}
+
+.c {
+    background: var(--cell);
+    border-radius: 5px;
+}
+
+.c.on { background: var(--col); }
+
+.c.pre {
+    background: var(--col);
+    opacity: .5;
+}
+
+#tray {
+    display: flex;
+    height: 128px;
+    background: var(--panel);
+    border-radius: 14px;
+}
+
+.slot {
+    flex: 1;
+    display: grid;
+    place-items: center;
+}
+
+.p {
+    display:grid;
+    gap:3px;
+    touch-action:none;
+    cursor:grab;
+}
+
+.p i { border-radius: 4px; }
+
+.p i.f { background: var(--col); }
+
+.float {
+    position: fixed;
+    z-index: 9;
+    pointer-events: none;
+    opacity: .92;
+}
+
+.bar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+button {
+    font: inherit;
+    font-weight: 600;
+    padding: 8px 14px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--text);
+    color: var(--bg);
+    cursor:pointer;
+}
+
+button.alt {
+    background: var(--panel);
+    color: var(--text);
+}
+
+#over {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    gap: 12px;
+    text-align: center;
+    background: #0009;
+    color: #fff;
+    z-index: 20;
+}
+
+#over[hidden] { display: none; }
+
+#over b { font-size: 40px; }
