@@ -8,19 +8,28 @@
     </head>
     <body>
         <header class="w">
-        <h1>Blockwise</h1>
-        <div class="stat">Score<b id="score">0</b></div>
-        <div class="stat">Record<b id="best">0</b></div>
+            <h1>Blockwise</h1>
+            <div class="stat score-stat">
+                Puntos
+                <b id="score">0</b>
+                <span id="gain" aria-live="polite"></span>
+            </div>
+
+            <div class="stat combo-stat">
+                Combo
+                <b id="combo">—</b>
+            </div>
+            <div class="stat">Record<b id="best">0</b></div>
         </header>
         <div id="board" class="w"></div>
         <div id="tray" class="w"></div>
         <div class="bar w">
-        <span id="seed"></span>
-        <span><button class="alt" id="daily">Daily game</button> <button id="new">New</button></span>
+            <span id="seed"></span>
+            <span><button class="alt" id="daily">Daily game</button> <button id="new">New</button></span>
         </div>
         <div id="over" hidden>
-        <b>Game over</b><span id="final"></span>
-        <button id="again">Play again</button>
+            <b>Game Over</b><span id="final"></span>
+            <button id="again">Play again</button>
         </div>
 
         <script src="script.js"></script>
