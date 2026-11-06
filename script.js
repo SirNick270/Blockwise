@@ -179,6 +179,7 @@ function startDrag(e, p, i, srcEl) {
   onMove(e);
 }
 function onMove(e) {
+  e.preventDefault();
   const { p, el, g, lift } = drag;
   const w = p.w * g.pitch - 3, h = p.h * g.pitch - 3;
   const left = e.clientX - w / 2, top = e.clientY - h / 2 - lift;
