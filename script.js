@@ -115,7 +115,7 @@ function buildBoard() {
     boardEl.append(d); cellEls.push(d);
   }
 }
-function drawBoard(ghost) { // ghost = {p, r, c}: vista previa mientras arrastras
+/*function drawBoard(ghost) { // ghost = {p, r, c}: vista previa mientras arrastras
   cellEls.forEach((d, i) => {
     const col = board[Math.floor(i / N)][i % N];
     d.className = "c" + (col ? " on" : "");
@@ -125,6 +125,64 @@ function drawBoard(ghost) { // ghost = {p, r, c}: vista previa mientras arrastra
     const d = cellEls[(ghost.r + dr) * N + ghost.c + dc];
     d.classList.add("pre"); d.style.setProperty("--col", ghost.p.color);
   });
+}*/
+function drawBoard(ghost) {
+    const placed = new Set();
+    const rows = new Set();
+    const cols = new Set();
+
+    // Casillas que ocuparía la pieza.
+    if (ghost) {
+        ghost.p.cells.forEach(([dr, dc]) => {
+            placed.add((ghost.r + dr) * N + ghost.c + dc);
+        });
+
+        // Detectar filas que quedarían completas.
+        for (let r = 0; r < N; r++) {
+            let full = true;
+
+            for (let c = 0; c < N; c++) {
+                if (!board[r][c] && !placed.has(r * N + c)) {
+                    full = false;
+                    break;
+                }
+            }
+
+            if (full) rows.add(r);
+        }
+
+        // Detectar columnas que quedarían completas.
+        for (let c = 0; c < N; c++) {
+            let full = true;
+
+            for (let r = 0; r < N; r++) {
+                if (!board[r][c] && !placed.has(r * N + c)) {
+                    full = false;
+                    break;
+                }
+            }
+
+            if (full) cols.add(c);
+        }
+    }
+
+    // Actualizar apariencia de todas las casillas.
+    cellEls.forEach((d, i) => {
+        const r = Math.floor(i / N);
+        const c = i % N;
+        const color = board[r][c];
+        const isPiece = placed.has(i);
+        const complete = ghost && (rows.has(r) || cols.has(c));
+
+        d.classList.toggle("on", !!color);
+        d.classList.toggle("pre", isPiece && !complete);
+        d.classList.toggle("complete", !!complete);
+
+        d.style.setProperty(
+            "--col",
+            complete ? ghost.p.color : (color || (isPiece ? ghost.p.color : ""))
+        );
+    });
 }
 function pieceEl(p, size) { // crea el HTML de una pieza con celdas de `size` px
   const el = document.createElement("div");
