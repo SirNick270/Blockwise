@@ -76,7 +76,7 @@ function nextPiece() {
 }
 
 /* ============ 3. REGLAS (sin nada de pantalla) ============ */
-let board, tray, score, best = 0;
+let board, tray, score, best, combo, misses = 0;
 try { best = +localStorage.getItem("best") || 0; } catch { /* localStorage puede fallar */ }
 
 function fits(p, r, c) { // ¿cabe la pieza con su esquina en (r,c)?
@@ -89,17 +89,34 @@ function canPlaceAnywhere(p) {
   for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (fits(p, r, c)) return true;
   return false;
 }
-function place(p, r, c) { // coloca, limpia líneas y devuelve los puntos ganados
-  p.cells.forEach(([dr, dc]) => { board[r + dr][c + dc] = p.color; });
-  const rows = [], cols = [];
-  for (let i = 0; i < N; i++) {
-    if (board[i].every(Boolean)) rows.push(i);
-    if (board.every(row => row[i])) cols.push(i);
-  }
-  rows.forEach(r => { for (let c = 0; c < N; c++) board[r][c] = null; });
-  cols.forEach(c => { for (let r = 0; r < N; r++) board[r][c] = null; });
-  const lines = rows.length + cols.length;
-  return p.cells.length + lines * 10 * lines; // más líneas a la vez = mucho más
+function place(p, r, c) {
+    p.cells.forEach(([dr, dc]) => {
+        board[r + dr][c + dc] = p.color;
+    });
+
+    const rows = [], cols = [];
+
+    for (let i = 0; i < N; i++) {
+        if (board[i].every(Boolean)) rows.push(i);
+        if (board.every(row => row[i])) cols.push(i);
+    }
+
+    rows.forEach(r => {
+        for (let c = 0; c < N; c++) board[r][c] = null;
+    });
+
+    cols.forEach(c => {
+        for (let r = 0; r < N; r++) board[r][c] = null;
+    });
+
+    const lines = rows.length + cols.length;
+    const allClear = lines > 0 && board.every(row => row.every(cell => !cell));
+
+    return {
+        blocks: p.cells.length,
+        lines,
+        allClear
+    };
 }
 
 /* ============ 4. PANTALLA ============ */
@@ -211,10 +228,40 @@ function drawTray() {
     trayEl.append(slot);
   });
 }
-function updateScore() {
-  if (score > best) { best = score; try { localStorage.setItem("best", best); } catch { } }
-  $("score").textContent = score;
-  $("best").textContent = best;
+function updateScore(gained = 0) {
+    if (score > best) {
+        best = score;
+        try {
+            localStorage.setItem("best", best);
+        } catch {}
+    }
+
+    const scoreEl = $("score");
+    const gainEl = $("gain");
+    const comboEl = $("combo");
+
+    scoreEl.textContent = score.toLocaleString("es-ES");
+    $("best").textContent = best.toLocaleString("es-ES");
+
+    comboEl.textContent = combo >= 2 ? `x${combo}` : "—";
+
+    scoreEl.classList.remove("score-pop");
+    void scoreEl.offsetWidth;
+    scoreEl.classList.add("score-pop");
+
+    if (gained > 0) {
+        gainEl.textContent = `+${gained.toLocaleString("es-ES")}`;
+        gainEl.classList.remove("show");
+        void gainEl.offsetWidth;
+        gainEl.classList.add("show");
+    }
+
+    comboEl.classList.remove("combo-pop");
+
+    if (combo >= 2 && gained > 0) {
+        void comboEl.offsetWidth;
+        comboEl.classList.add("combo-pop");
+    }
 }
 
 /* ============ 5. ARRASTRAR (pointer events: ratón y táctil a la vez) ============ */
@@ -250,13 +297,38 @@ function onUp(e) {
   d.el.remove();
   if (e.type === "pointercancel") d.target = null;
   if (d.target) {
-    score += place(d.p, d.target.r, d.target.c);
+    const result = place(d.p, d.target.r, d.target.c);
+
+    let gained = result.blocks;
+
+    if (result.lines > 0) {
+        combo++;
+        misses = 0;
+
+        gained += 10 * result.lines ** 2 * Math.min(combo, 8);
+
+        if (result.allClear) gained += 300;
+    } else if (combo > 0) {
+        misses++;
+
+        if (misses >= 3) {
+            combo = 0;
+            misses = 0;
+        }
+    }
+
+    score += gained;
     tray[d.i] = null;
-    if (tray.every(x => !x)) tray = [nextPiece(), nextPiece(), nextPiece()];
-    updateScore();
+
+    if (tray.every(x => !x)) {
+        tray = [nextPiece(), nextPiece(), nextPiece()];
+    }
+
+    updateScore(gained);
+
     if (!tray.some(p => p && canPlaceAnywhere(p))) {
-      $("final").textContent = "Puntos: " + score;
-      $("over").hidden = false;
+        $("final").textContent = "Puntos: " + score;
+        $("over").hidden = false;
     }
   }
   drawBoard(); drawTray();
@@ -269,6 +341,8 @@ function newGame(seed) {
   board = Array.from({ length: N }, () => Array(N).fill(null));
   tray = [nextPiece(), nextPiece(), nextPiece()];
   score = 0;
+  combo = 0;
+  misses = 0;
   $("seed").textContent = "Semilla: " + seed;
   $("over").hidden = true;
   updateScore(); drawBoard(); drawTray();
