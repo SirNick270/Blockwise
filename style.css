@@ -84,6 +84,31 @@ h1 {
     opacity: .5;
 }
 
+.c.complete {
+    background: var(--col);
+    opacity: 1;
+    animation: line-shake 220ms ease-in-out infinite;
+    transform-origin: center;
+}
+
+@keyframes line-shake {
+    0%, 100% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+    25% {
+        transform: translate(-1px, 0.5px) rotate(-0.7deg);
+    }
+    75% {
+        transform: translate(1px, -0.5px) rotate(0.7deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .c.complete {
+        animation: none;
+    }
+}
+
 #tray {
     display: flex;
     height: 128px;
@@ -198,4 +223,29 @@ body {
     -webkit-user-select: none;
     touch-action: none;
     overscroll-behavior: none;
+}
+
+.p {
+    position: relative;
+    isolation: isolate;
+}
+
+@media (pointer: coarse) {
+    .p::before {
+        content: "";
+        position: absolute;
+        inset: -30px;
+        z-index: -1;
+        touch-action: none;
+    }
+}
+
+/* La pieza original necesita position: relative */
+.p:not(.float) {
+    position: relative;
+}
+
+/* La pieza arrastrada siempre debe ser fixed */
+.p.float {
+    position: fixed;
 }
