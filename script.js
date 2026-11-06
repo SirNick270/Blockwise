@@ -358,4 +358,4 @@ document.addEventListener("touchmove", e => {
     e.preventDefault();
 }, { passive: false });
 
-hapticTrigger($("haptic-test"));
+hapticTrigger(document.getElementById("haptic-test"));
