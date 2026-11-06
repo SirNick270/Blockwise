@@ -278,7 +278,7 @@ function startDrag(e, p, i, srcEl) {
   document.body.append(el);
   srcEl.style.opacity = .25;
   srcEl.setPointerCapture(e.pointerId); // seguimos recibiendo eventos aunque el dedo salga de la pieza
-  drag = { p, i, el, g, lift: e.pointerType === "touch" ? 70 : 0, target: null };
+  drag = { p, i, el, g, lift: e.pointerType === "touch" ? 120 : 0, target: null };
   srcEl.onpointermove = onMove;
   srcEl.onpointerup = srcEl.onpointercancel = onUp;
   onMove(e);
