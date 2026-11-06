@@ -1,5 +1,4 @@
 "use strict";
-import { hapticTrigger } from "https://esm.sh/ios-haptics@3.3.0";
 
 /* ============ 1. DATOS: las piezas ============ */
 const N = 8; // tamaño del tablero
@@ -357,5 +356,3 @@ newGame();
 document.addEventListener("touchmove", e => {
     e.preventDefault();
 }, { passive: false });
-
-hapticTrigger(document.getElementById("haptic-test"));
