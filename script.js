@@ -101,19 +101,18 @@ function place(p, r, c) {
         if (board.every(row => row[i])) cols.push(i);
     }
 
-    rows.forEach(r => {
-        for (let c = 0; c < N; c++) board[r][c] = null;
-    });
-
-    cols.forEach(c => {
-        for (let r = 0; r < N; r++) board[r][c] = null;
-    });
+    // Guardamos el color de cada celda que se borra para poder animarla luego
+    const cleared = new Map();
+    rows.forEach(y => { for (let x = 0; x < N; x++) cleared.set(y * N + x, board[y][x]); });
+    cols.forEach(x => { for (let y = 0; y < N; y++) cleared.set(y * N + x, board[y][x]); });
+    cleared.forEach((_, i) => { board[Math.floor(i / N)][i % N] = null; });
 
     const lines = rows.length + cols.length;
     const allClear = lines > 0 && board.every(row => row.every(cell => !cell));
 
     return {
         blocks: p.cells.length,
+        cleared,
         lines,
         allClear
     };
@@ -214,7 +213,9 @@ function pieceEl(p, size) { // crea el HTML de una pieza con celdas de `size` px
   }
   return el;
 }
+let shownTray; // para saber si la bandeja es nueva (otro array) o la misma
 function drawTray() {
+  const animate = tray !== shownTray; shownTray = tray;
   const size = Math.floor(boardEl.clientWidth / N * 0.4);
   trayEl.innerHTML = "";
   tray.forEach((p, i) => {
@@ -223,6 +224,7 @@ function drawTray() {
     if (p) {
       const el = pieceEl(p, size);
       el.addEventListener("pointerdown", e => startDrag(e, p, i, el)); // evento = "cuando pase X, ejecuta esto"
+      if (animate) { el.classList.add("enter"); el.style.setProperty("--i", i); }
       slot.append(el);
     }
     trayEl.append(slot);
@@ -325,6 +327,7 @@ function onUp(e) {
     }
 
     updateScore(gained);
+    celebrate(d.p, d.target, result, gained);
 
     if (!tray.some(p => p && canPlaceAnywhere(p))) {
         $("final").textContent = "Puntos: " + score;
@@ -343,7 +346,7 @@ function newGame(seed) {
   score = 0;
   combo = 0;
   misses = 0;
-  $("seed").textContent = "Semilla: " + seed;
+  $("seed").textContent = "Seed: " + seed;
   $("over").hidden = true;
   updateScore(); drawBoard(); drawTray();
 }
@@ -356,3 +359,114 @@ newGame();
 document.addEventListener("touchmove", e => {
     e.preventDefault();
 }, { passive: false });
+
+
+/* ============ 7. EFECTOS DE CELEBRACIÓN ============ */
+function rand(a, b) { return a + Math.random() * (b - a); }
+function cellCenter(i) {
+  const b = cellEls[i].getBoundingClientRect();
+  return [b.left + b.width / 2, b.top + b.height / 2];
+}
+// Reinicia una animación CSS: quita la clase, fuerza el recálculo y la vuelve a poner.
+function play(el, cls) {
+  el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls);
+  el.addEventListener("animationend", function h(e) {
+    if (e.target !== el) return;   // animationend "sube" desde los hijos: ignoramos los ajenos
+    el.classList.remove(cls); el.removeEventListener("animationend", h);
+  });
+}
+// Texto que salta, crece y se desvanece. element.animate() = animaciones desde JS (Web Animations API)
+function popText(text, x, y, { size = 28, color = "#fff", glow = "#000", rise = 40, ms = 900 } = {}) {
+  const el = document.createElement("div");
+  el.className = "fx-text";
+  el.textContent = text;
+  el.style.cssText = `left:${x}px;top:${y}px;font-size:${size}px;color:${color};--c:${glow}`;
+  document.body.append(el);
+  const at = (dy, s) => `translate(-50%,-50%) translateY(${-dy}px) scale(${s})`;
+  el.animate([
+    { transform: at(0, .3), opacity: 0 },
+    { transform: at(rise * .3, 1.3), opacity: 1, offset: .2 },
+    { transform: at(rise * .6, 1), opacity: 1, offset: .65 },
+    { transform: at(rise, .9), opacity: 0 }
+  ], { duration: ms, easing: "ease-out" }).onfinish = () => el.remove();
+}
+// Chispas que salen disparadas en todas direcciones
+function burst(x, y, color, n, spread) {
+  for (let k = 0; k < n; k++) {
+    const p = document.createElement("div"), s = rand(5, 11);
+    p.className = "fx-dot";
+    p.style.cssText = `left:${x}px;top:${y}px;width:${s}px;height:${s}px;background:${color}`;
+    document.body.append(p);
+    const a = rand(0, Math.PI * 2), r = rand(.4, 1) * spread;
+    p.animate([
+      { transform: "translate(-50%,-50%) scale(1)", opacity: 1 },
+      { transform: `translate(calc(-50% + ${Math.cos(a) * r}px), calc(-50% + ${Math.sin(a) * r + 30}px)) scale(0)`, opacity: 0 }
+    ], { duration: rand(500, 950), easing: "cubic-bezier(.1,.7,.3,1)" }).onfinish = () => p.remove();
+  }
+}
+// Onda expansiva
+function ring(x, y, color, size) {
+  const r = document.createElement("div");
+  r.className = "fx-ring";
+  r.style.cssText = `left:${x}px;top:${y}px;color:${color}`;
+  document.body.append(r);
+  r.animate([
+    { transform: "translate(-50%,-50%) scale(.1)", opacity: 1 },
+    { transform: `translate(-50%,-50%) scale(${size})`, opacity: 0 }
+  ], { duration: 650, easing: "ease-out" }).onfinish = () => r.remove();
+}
+
+// Todo lo que pasa al colocar una pieza. Cuanto más "hype", más intenso.
+function celebrate(p, t, res, gained) {
+  const g = geom();
+  const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const px = g.x0 + t.c * g.pitch + (p.w * g.pitch - 3) / 2;   // centro de la pieza colocada
+  const py = g.y0 + t.r * g.pitch + (p.h * g.pitch - 3) / 2;
+  const hype = Math.min(res.lines + Math.floor(combo / 2), 8); // 0 = colocar sin más ... 8 = locura
+
+  // 1. Rebote en las celdas colocadas que no se borran
+  p.cells.forEach(([dr, dc]) => {
+    const i = (t.r + dr) * N + t.c + dc;
+    if (!res.cleared.has(i)) play(cellEls[i], "drop");
+  });
+
+  // 2. Número de puntos en CADA colocación; más grande cuanto más ganas
+  popText("+" + gained.toLocaleString("es-ES"), px, py,
+    { size: Math.min(22 + gained / 8, 76), glow: p.color, rise: 50 + hype * 10 });
+  if (res.lines === 0) return;
+
+  navigator.vibrate?.(Math.min(25 + hype * 25, 220)); // vibración (solo Android)
+
+  // 3. Ola de borrado: las celdas cercanas a la pieza estallan primero
+  const cleared = [...res.cleared];
+  const n = cleared.length > 24 ? 2 : Math.min(3 + hype, 7); // chispas por celda
+  cleared.forEach(([i, color]) => {
+    const el = cellEls[i], [cx, cy] = cellCenter(i);
+    const delay = Math.round(Math.hypot(cx - px, cy - py) / g.pitch * 40);
+    el.style.setProperty("--k", color);
+    el.style.setProperty("--d", delay + "ms");
+    play(el, "clear");
+    if (!calm) setTimeout(() => burst(cx, cy, color, n, 60 + hype * 14), delay + 120);
+  });
+
+  // 4. Onda, destello y temblor del tablero (más fuerte con más hype)
+  if (!calm) {
+    ring(px, py, p.color, 5 + hype * 1.5);
+    boardEl.style.setProperty("--s", (2 + hype * 1.5) + "px");
+    boardEl.style.setProperty("--fc", p.color);
+    play(boardEl, "boom");
+  }
+
+  // 5. Carteles
+  const bb = boardEl.getBoundingClientRect(), bx = bb.left + bb.width / 2, by = bb.top + bb.height / 2;
+  const names = ["", "", "¡DOBLE!", "¡TRIPLE!", "¡CUÁDRUPLE!"];
+  if (res.lines >= 2)
+    popText(names[res.lines] || "¡INCREÍBLE!", bx, by - 30, { size: 34 + res.lines * 3, color: "#fff", glow: p.color, ms: 1100, rise: 30 });
+  if (combo >= 2)
+    popText("COMBO x" + combo, bx, by + 35, { size: 26 + Math.min(combo, 10) * 3, color: "#ffd166", glow: "#ef476f", ms: 1200, rise: 25 });
+  if (res.allClear) {
+    popText("¡TABLERO LIMPIO!", bx, by - 95, { size: 42, color: "#ffd166", glow: "#ff9f1c", ms: 1600, rise: 20 });
+    if (!calm) for (let k = 0; k < 6; k++)
+      setTimeout(() => burst(bx + rand(-130, 130), by + rand(-130, 130), COLORS[k % COLORS.length], 14, 220), k * 90);
+  }
+}
