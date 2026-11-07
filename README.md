@@ -1,7 +1,5 @@
 # BlockWise
 
----
-
 **A neon-glow block puzzle for your browser. Drag, fit, clear, combo.**
 
 ### [Play now → sirnick270.github.io/Blockwise](https://sirnick270.github.io/Blockwise)
