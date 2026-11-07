@@ -76,7 +76,7 @@ function nextPiece() {
 }
 
 /* ============ 3. REGLAS (sin nada de pantalla) ============ */
-let board, tray, score, best, combo, misses = 0;
+let board, tray, score, best, combo, misses = 0, startBest = 0;
 try { best = +localStorage.getItem("best") || 0; } catch { /* localStorage puede fallar */ }
 
 function fits(p, r, c) { // ¿cabe la pieza con su esquina en (r,c)?
@@ -117,6 +117,56 @@ function place(p, r, c) {
         allClear
     };
 }
+
+/* ============ HÁPTICA ============
+   Android (Chrome/Firefox): navigator.vibrate() con duraciones y patrones.
+   iOS (Safari 17.4+): no existe vibrate(); el único truco conocido es alternar un
+   <input type="checkbox" switch>, que dispara el "tic" nativo del sistema. Es de intensidad
+   fija y solo suena dentro de un gesto del usuario, así que allí se simula la vibración larga
+   encadenando varios tics. Es un extra "si se puede": si no funciona, el juego sigue igual. */
+const hap = (() => {
+  const native = typeof navigator.vibrate === "function";
+  let label = null;
+  function iosTick() {
+    if (!label) {
+      label = document.createElement("label");
+      label.setAttribute("aria-hidden", "true");
+      label.style.cssText = "position:fixed;left:-100px;top:-100px;width:1px;height:1px;opacity:0;pointer-events:none";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.setAttribute("switch", "");
+      input.tabIndex = -1;
+      label.append(input);
+      document.body.append(label);
+    }
+    label.click();
+  }
+  function iosTicks(n, gap) { // n tics seguidos, uno cada `gap` ms
+    for (let k = 0; k < n; k++) k ? setTimeout(iosTick, k * gap) : iosTick();
+  }
+  let lastMove = 0;
+  return {
+    // Toquecito al arrastrar la pieza por una posición donde encaja
+    snap() {
+      const now = performance.now();
+      if (now - lastMove < 35) return;           // evita ametrallar si el dedo va muy rápido
+      lastMove = now;
+      native ? navigator.vibrate(8) : iosTicks(1);
+    },
+    // Al soltar la pieza: toquecito; si además limpia líneas, toque largo a continuación
+    drop(lines, allClear) {
+      if (!lines) { native ? navigator.vibrate(14) : iosTicks(1); return; }
+      const long = Math.min(60 + 30 * lines, 150);   // 1 línea 90 ms ... máx. 150 ms
+      if (native) {
+        navigator.vibrate(allClear
+          ? [14, 45, 140, 70, 140]                    // tablero limpio: doble toque largo (~300 ms)
+          : [14, 45, long]);
+      } else {
+        iosTicks(allClear ? 10 : 2 + lines, 40);
+      }
+    }
+  };
+})();
 
 /* ============ 4. PANTALLA ============ */
 const $ = id => document.getElementById(id);
@@ -230,40 +280,45 @@ function drawTray() {
     trayEl.append(slot);
   });
 }
-function updateScore(gained = 0) {
-    if (score > best) {
-        best = score;
-        try {
-            localStorage.setItem("best", best);
-        } catch {}
-    }
+// Contador que sube número a número (sensación de avance real). Sirve para cualquier elemento.
+const counters = new Map(); // elemento -> { shown: número mostrado, raf: id de animación }
+const fmt = n => Math.round(n).toLocaleString("es-ES");
+function rollTo(el, target) {
+  let st = counters.get(el);
+  if (!st) { counters.set(el, { shown: target, raf: 0 }); el.textContent = fmt(target); return; }
+  cancelAnimationFrame(st.raf);
+  const from = st.shown, diff = target - from;
+  const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (diff <= 0 || calm) { st.shown = target; el.textContent = fmt(target); el.classList.remove("rolling"); return; }
+  const ms = Math.min(1300, Math.max(220, diff * 40)); // más puntos = cuenta más larga (máx. 1,3 s)
+  const t0 = performance.now();
+  el.classList.add("rolling");
+  const step = now => {
+    const k = Math.min(1, (now - t0) / ms);
+    st.shown = from + diff * (1 - Math.pow(1 - k, 3));    // empieza rápido y frena al llegar
+    el.textContent = fmt(st.shown);
+    if (k < 1) { st.raf = requestAnimationFrame(step); return; }
+    st.shown = target; el.classList.remove("rolling"); play(el, "land");
+  };
+  st.raf = requestAnimationFrame(step);
+}
 
-    const scoreEl = $("score");
-    const gainEl = $("gain");
-    const comboEl = $("combo");
+let prevLife = 0;
+function updateScore() {
+  if (score > best) {
+    best = score;
+    try { localStorage.setItem("best", best); } catch {}
+  }
+  rollTo($("score"), score);
+  rollTo($("best"), best);
 
-    scoreEl.textContent = score.toLocaleString("es-ES");
-    $("best").textContent = best.toLocaleString("es-ES");
-
-    comboEl.textContent = combo >= 2 ? `x${combo}` : "—";
-
-    scoreEl.classList.remove("score-pop");
-    void scoreEl.offsetWidth;
-    scoreEl.classList.add("score-pop");
-
-    if (gained > 0) {
-        gainEl.textContent = `+${gained.toLocaleString("es-ES")}`;
-        gainEl.classList.remove("show");
-        void gainEl.offsetWidth;
-        gainEl.classList.add("show");
-    }
-
-    comboEl.classList.remove("combo-pop");
-
-    if (combo >= 2 && gained > 0) {
-        void comboEl.offsetWidth;
-        comboEl.classList.add("combo-pop");
-    }
+  // Ficha de combo: quedan 3 jugadas = tamaño completo, 2 = mediana, 1 = pequeña, sin combo = oculta
+  const left = combo > 0 ? 3 - misses : 0;
+  const life = [0, .4, .68, 1][left];
+  const gem = $("gem");
+  gem.style.setProperty("--life", life);
+  if (life > prevLife) play(gem, "pop");   // al conseguir/renovar el combo, la ficha "salta"
+  prevLife = life;
 }
 
 /* ============ 5. ARRASTRAR (pointer events: ratón y táctil a la vez) ============ */
@@ -291,7 +346,9 @@ function onMove(e) {
   const left = e.clientX - w / 2, top = e.clientY - h / 2 - lift;
   el.style.left = left + "px"; el.style.top = top + "px";
   const c = Math.round((left - g.x0) / g.pitch), r = Math.round((top - g.y0) / g.pitch);
+  const prev = drag.target;
   drag.target = fits(p, r, c) ? { r, c } : null;
+  if (drag.target && (!prev || prev.r !== r || prev.c !== c)) hap.snap();
   drawBoard(drag.target && { p, r, c });
 }
 function onUp(e) {
@@ -328,13 +385,23 @@ function onUp(e) {
 
     updateScore(gained);
     celebrate(d.p, d.target, result, gained);
+    hap.drop(result.lines, result.allClear);
 
-    if (!tray.some(p => p && canPlaceAnywhere(p))) {
-        $("final").textContent = "Puntos: " + score;
-        $("over").hidden = false;
-    }
+    if (!tray.some(p => p && canPlaceAnywhere(p))) showGameOver();
   }
   drawBoard(); drawTray();
+}
+
+function showGameOver() {
+  const isRecord = score > startBest;
+  $("newbest").hidden = !isRecord;
+  $("oldbest").hidden = isRecord;
+  $("finalbest").textContent = fmt(best || 0);
+  const fin = $("final");
+  counters.delete(fin);
+  rollTo(fin, 0);                                   // arranca en 0...
+  $("over").hidden = false;
+  setTimeout(() => rollTo(fin, score), 1100);       // ...y sube cuando aparece la tarjeta
 }
 
 /* ============ 6. ARRANQUE ============ */
@@ -346,6 +413,7 @@ function newGame(seed) {
   score = 0;
   combo = 0;
   misses = 0;
+  startBest = best || 0;
   $("seed").textContent = "Seed: " + seed;
   $("over").hidden = true;
   updateScore(); drawBoard(); drawTray();
@@ -434,8 +502,6 @@ function celebrate(p, t, res, gained) {
   popText("+" + gained.toLocaleString("es-ES"), px, py,
     { size: Math.min(22 + gained / 8, 76), glow: p.color, rise: 50 + hype * 10 });
   if (res.lines === 0) return;
-
-  navigator.vibrate?.(Math.min(25 + hype * 25, 220)); // vibración (solo Android)
 
   // 3. Ola de borrado: las celdas cercanas a la pieza estallan primero
   const cleared = [...res.cleared];
