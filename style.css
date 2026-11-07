@@ -318,3 +318,66 @@ body {
         animation: none;
     }
 }
+
+/* ===== EFECTOS DE CELEBRACIÓN ===== */
+/* Línea a punto de completarse: brilla con el color de la pieza */
+.c.complete { position: relative; z-index: 1; filter: brightness(1.25); box-shadow: 0 0 0 2px var(--col), 0 0 14px var(--col); }
+
+/* Pieza que arrastras: levantada, con sombra */
+.p.float { transform: scale(1.08); filter: drop-shadow(0 10px 12px #0006); }
+
+/* Rebote al colocar */
+.c.drop { animation: drop .3s cubic-bezier(.3, 1.7, .5, 1); }
+@keyframes drop {
+    from { transform: scale(.5); filter: brightness(1.8); }
+    to   { transform: scale(1);  filter: brightness(1); }
+}
+
+/* Celda que se limpia: destello y estalla (--k color, --d retraso en onda) */
+.c.clear { position: relative; z-index: 2; background: var(--k); animation: clear .55s ease-in var(--d, 0ms) both; }
+@keyframes clear {
+    0%   { transform: scale(1); filter: brightness(1); }
+    30%  { transform: scale(1.25) rotate(4deg); filter: brightness(2.2); box-shadow: 0 0 22px 4px var(--k); }
+    100% { transform: scale(0) rotate(-20deg); opacity: 0; filter: brightness(3); }
+}
+
+/* Tablero: temblor + destello a la vez (una sola animación compuesta) */
+#board.boom { animation: shake .5s, flash .5s ease-out; }
+@keyframes shake {
+    20% { transform: translate(calc(var(--s) * -1), calc(var(--s) * .3)); }
+    40% { transform: translate(var(--s), calc(var(--s) * -.6)); }
+    60% { transform: translate(calc(var(--s) * -.7), calc(var(--s) * .5)); }
+    80% { transform: translate(calc(var(--s) * .5), 0); }
+}
+@keyframes flash {
+    0%   { box-shadow: 0 0 0 0 transparent; }
+    25%  { box-shadow: 0 0 40px 8px var(--fc); filter: brightness(1.3); }
+    100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* Textos, chispas y onda (los crea el JS) */
+.fx-text {
+    position: fixed; z-index: 30; pointer-events: none;
+    font-weight: 900; white-space: nowrap; letter-spacing: .02em; color: #fff;
+    text-shadow: 0 2px 0 #0008, 0 -1px 0 #0008, 1px 0 0 #0008, -1px 0 0 #0008, 0 0 18px var(--c, #000);
+}
+.fx-dot { position: fixed; z-index: 25; pointer-events: none; border-radius: 50%; }
+.fx-ring {
+    position: fixed; z-index: 24; pointer-events: none; width: 100px; height: 100px;
+    border: 6px solid currentColor; border-radius: 50%;
+    box-shadow: 0 0 24px currentColor, inset 0 0 24px currentColor;
+}
+
+/* Piezas nuevas de la bandeja: entran una tras otra */
+.p.enter { animation: enter .45s cubic-bezier(.2, 1.5, .4, 1) calc(var(--i) * 80ms) backwards; }
+@keyframes enter { from { transform: translateY(36px) scale(.5); opacity: 0; } }
+
+/* Game over: espera a que se vea la última jugada */
+#over:not([hidden]) { animation: fade .4s .9s both; }
+#over b { animation: pop .5s cubic-bezier(.2, 1.6, .4, 1) 1s both; }
+@keyframes fade { from { opacity: 0; } }
+@keyframes pop  { from { transform: scale(.6); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+    .c.drop, .c.clear, #board.boom, .p.enter, #over:not([hidden]), #over b { animation: none; }
+}
