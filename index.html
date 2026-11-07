@@ -1,37 +1,66 @@
 <!DOCTYPE html>
 <html lang="es">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-        <title>Blockwise</title>
-        <link rel="stylesheet" href="style.css">
-    </head>
-    <body>
-        <header class="w">
-            <h1>Blockwise</h1>
-            <div class="stat score-stat">
-                Puntos
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Blockwise</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main id="app">
+        <section id="top">
+            <div class="row">
+                <div id="record" title="Récord">
+                    <svg class="crown" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 11H5z"/>
+                        <rect x="5" y="19.2" width="14" height="2.2" rx="1.1"/>
+                    </svg>
+                    <b id="best">0</b>
+                </div>
+                <div class="btns">
+                    <button class="alt" id="daily">Daily game</button>
+                    <button id="new">New</button>
+                </div>
+            </div>
+            <div id="scorebar">
                 <b id="score">0</b>
-                <span id="gain" aria-live="polite"></span>
+                <span id="gem" class="gem" aria-hidden="true"></span>
             </div>
+        </section>
 
-            <div class="stat combo-stat">
-                Combo
-                <b id="combo">—</b>
-            </div>
-            <div class="stat">Record<b id="best">0</b></div>
-        </header>
-        <div id="board" class="w"></div>
-        <div id="tray" class="w"></div>
-        <div class="bar w">
+        <div id="board"></div>
+
+        <section id="bottom">
+            <div id="tray"></div>
             <span id="seed"></span>
-            <span><button class="alt" id="daily">Daily game</button> <button id="new">New</button></span>
-        </div>
-        <div id="over" hidden>
-            <b>Game Over</b><span id="final"></span>
+        </section>
+    </main>
+
+    <div id="over" hidden role="dialog" aria-modal="true" aria-labelledby="over-title">
+        <div class="over-card">
+            <h2 id="over-title">Game Over</h2>
+            <div class="over-score">
+                <span class="over-label">Puntos</span>
+                <b id="final">0</b>
+            </div>
+            <div id="newbest" hidden>
+                <svg class="crown" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 11H5z"/>
+                    <rect x="5" y="19.2" width="14" height="2.2" rx="1.1"/>
+                </svg>
+                ¡Nuevo récord!
+            </div>
+            <div id="oldbest">
+                <svg class="crown" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 11H5z"/>
+                    <rect x="5" y="19.2" width="14" height="2.2" rx="1.1"/>
+                </svg>
+                <span id="finalbest">0</span>
+            </div>
             <button id="again">Play again</button>
         </div>
+    </div>
 
-        <script type="module" src="script.js"></script>
-    </body>
+    <script type="module" src="script.js"></script>
+</body>
 </html>
