@@ -126,6 +126,28 @@ function place(p, r, c) {
    encadenando varios tics. Es un extra "si se puede": si no funciona, el juego sigue igual. */
 const hap = (() => {
   const native = typeof navigator.vibrate === "function";
+  // Diagnóstico: abre la página con ?haptics al final de la URL para ver un panel con el estado
+  const debug = /[?&]haptics/.test(location.search);
+  let panel = null, calls = 0, last = "-";
+  function report() {
+    if (!debug) return;
+    if (!panel) {
+      panel = document.createElement("pre");
+      panel.style.cssText = "position:fixed;left:6px;bottom:6px;z-index:99;margin:0;padding:6px 8px;font:11px/1.35 monospace;background:#000c;color:#0f0;border-radius:6px;pointer-events:none;white-space:pre-wrap;max-width:92vw";
+      document.body.append(panel);
+    }
+    panel.textContent =
+      "vibrate existe: " + native +
+      "\nen iframe: " + (self !== top) +
+      "\nactivacion usuario: " + (navigator.userActivation ? navigator.userActivation.hasBeenActive : "n/d") +
+      "\nllamadas: " + calls + "  ultimo resultado: " + last;
+  }
+  function vib(p) {
+    calls++;
+    try { last = String(navigator.vibrate(p)); } catch (err) { last = "error: " + err.message; }
+    report();
+  }
+  report();
   let label = null;
   function iosTick() {
     if (!label) {
@@ -151,14 +173,14 @@ const hap = (() => {
       const now = performance.now();
       if (now - lastMove < 35) return;           // evita ametrallar si el dedo va muy rápido
       lastMove = now;
-      native ? navigator.vibrate(8) : iosTicks(1);
+      native ? vib(8) : iosTicks(1);
     },
     // Al soltar la pieza: toquecito; si además limpia líneas, toque largo a continuación
     drop(lines, allClear) {
-      if (!lines) { native ? navigator.vibrate(14) : iosTicks(1); return; }
+      if (!lines) { native ? vib(14) : iosTicks(1); return; }
       const long = Math.min(60 + 30 * lines, 150);   // 1 línea 90 ms ... máx. 150 ms
       if (native) {
-        navigator.vibrate(allClear
+        vib(allClear
           ? [14, 45, 140, 70, 140]                    // tablero limpio: doble toque largo (~300 ms)
           : [14, 45, long]);
       } else {
@@ -250,9 +272,10 @@ function drawBoard(ghost) {
         );
     });
 }
-function pieceEl(p, size) { // crea el HTML de una pieza con celdas de `size` px
+function pieceEl(p, size, gap) { // crea el HTML de una pieza con celdas de `size` px y hueco `gap` px
   const el = document.createElement("div");
   el.className = "p";
+  el.style.gap = gap + "px";
   el.style.gridTemplateColumns = `repeat(${p.w}, ${size}px)`; // `...${x}` = plantilla de texto
   el.style.setProperty("--col", p.color);
   for (let r = 0; r < p.h; r++) for (let c = 0; c < p.w; c++) {
@@ -267,12 +290,13 @@ let shownTray; // para saber si la bandeja es nueva (otro array) o la misma
 function drawTray() {
   const animate = tray !== shownTray; shownTray = tray;
   const size = Math.floor(boardEl.clientWidth / N * 0.4);
+  const gap = geom().gap * 0.4;   // misma proporción que el tablero
   trayEl.innerHTML = "";
   tray.forEach((p, i) => {
     const slot = document.createElement("div");
     slot.className = "slot";
     if (p) {
-      const el = pieceEl(p, size);
+      const el = pieceEl(p, size, gap);
       el.addEventListener("pointerdown", e => startDrag(e, p, i, el)); // evento = "cuando pase X, ejecuta esto"
       if (animate) { el.classList.add("enter"); el.style.setProperty("--i", i); }
       slot.append(el);
@@ -325,12 +349,14 @@ function updateScore() {
 let drag = null;
 function geom() { // posición real de las celdas en pantalla
   const a = cellEls[0].getBoundingClientRect(), b = cellEls[1].getBoundingClientRect();
-  return { x0: a.left, y0: a.top, size: a.width, pitch: b.left - a.left };
+  return { x0: a.left, y0: a.top, size: a.width, pitch: b.left - a.left, gap: b.left - a.left - a.width };
 }
+let orientationTried = false;
 function startDrag(e, p, i, srcEl) {
   e.preventDefault();
+  if (!orientationTried) { orientationTried = true; try { screen.orientation?.lock?.("portrait")?.catch(() => {}); } catch {} }
   const g = geom();
-  const el = pieceEl(p, g.size);
+  const el = pieceEl(p, g.size, g.gap);
   el.classList.add("float");
   document.body.append(el);
   srcEl.style.opacity = .25;
@@ -342,7 +368,7 @@ function startDrag(e, p, i, srcEl) {
 }
 function onMove(e) {
   const { p, el, g, lift } = drag;
-  const w = p.w * g.pitch - 3, h = p.h * g.pitch - 3;
+  const w = p.w * g.pitch - g.gap, h = p.h * g.pitch - g.gap;
   const left = e.clientX - w / 2, top = e.clientY - h / 2 - lift;
   el.style.left = left + "px"; el.style.top = top + "px";
   const c = Math.round((left - g.x0) / g.pitch), r = Math.round((top - g.y0) / g.pitch);
@@ -488,8 +514,8 @@ function ring(x, y, color, size) {
 function celebrate(p, t, res, gained) {
   const g = geom();
   const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const px = g.x0 + t.c * g.pitch + (p.w * g.pitch - 3) / 2;   // centro de la pieza colocada
-  const py = g.y0 + t.r * g.pitch + (p.h * g.pitch - 3) / 2;
+  const px = g.x0 + t.c * g.pitch + (p.w * g.pitch - g.gap) / 2;   // centro de la pieza colocada
+  const py = g.y0 + t.r * g.pitch + (p.h * g.pitch - g.gap) / 2;
   const hype = Math.min(res.lines + Math.floor(combo / 2), 8); // 0 = colocar sin más ... 8 = locura
 
   // 1. Rebote en las celdas colocadas que no se borran
@@ -525,13 +551,13 @@ function celebrate(p, t, res, gained) {
 
   // 5. Carteles
   const bb = boardEl.getBoundingClientRect(), bx = bb.left + bb.width / 2, by = bb.top + bb.height / 2;
-  const names = ["", "", "¡DOBLE!", "¡TRIPLE!", "¡CUÁDRUPLE!"];
+  const names = ["", "", "DOUBLE!", "TRIPLE!", "QUADRUPLE!"];
   if (res.lines >= 2)
-    popText(names[res.lines] || "¡INCREÍBLE!", bx, by - 30, { size: 34 + res.lines * 3, color: "#fff", glow: p.color, ms: 1100, rise: 30 });
+    popText(names[res.lines] || "AMAZING!", bx, by - 30, { size: 34 + res.lines * 3, color: "#fff", glow: p.color, ms: 1100, rise: 30 });
   if (combo >= 2)
     popText("COMBO x" + combo, bx, by + 35, { size: 26 + Math.min(combo, 10) * 3, color: "#ffd166", glow: "#ef476f", ms: 1200, rise: 25 });
   if (res.allClear) {
-    popText("¡TABLERO LIMPIO!", bx, by - 95, { size: 42, color: "#ffd166", glow: "#ff9f1c", ms: 1600, rise: 20 });
+    popText("CLEAR!", bx, by - 95, { size: 42, color: "#ffd166", glow: "#ff9f1c", ms: 1600, rise: 20 });
     if (!calm) for (let k = 0; k < 6; k++)
       setTimeout(() => burst(bx + rand(-130, 130), by + rand(-130, 130), COLORS[k % COLORS.length], 14, 220), k * 90);
   }
