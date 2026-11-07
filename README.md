@@ -1,6 +1,6 @@
 <div>
 
-###BLOCKWISE
+### BlockWise
                                                                       
 
 **A neon-glow block puzzle for your browser. Drag, fit, clear, combo.**
