@@ -1,6 +1,4 @@
-<div>
-
-### BlockWise
+### BlockWise
                                                                       
 
 **A neon-glow block puzzle for your browser. Drag, fit, clear, combo.**
@@ -8,8 +6,6 @@
 ### [Play now → sirnick270.github.io/Blockwise](https://sirnick270.github.io/Blockwise)
 
 *Pure HTML, CSS and JavaScript. No libraries, no build step. Made for phones, works everywhere.*
-
-</div>
 
 ---
 
