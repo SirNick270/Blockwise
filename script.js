@@ -1,5 +1,7 @@
 "use strict";
 
+console.log("Testing");
+
 /* ============ 1. DATOS: las piezas ============ */
 const N = 8; // tamaño del tablero
 const COLORS = ["#ef476f", "#ffb703", "#06d6a0", "#118ab2", "#8338ec", "#fb8500"];
