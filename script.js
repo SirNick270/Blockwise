@@ -1,8 +1,6 @@
 "use strict";
 
-console.log("Testing");
-
-/* ============ 1. DATOS: las piezas ============ */
+/* ============ 1. BLOCKS ============ */
 const N = 8; // tamaño del tablero
 const COLORS = ["#ef476f", "#ffb703", "#06d6a0", "#118ab2", "#8338ec", "#fb8500"];
 const BASE = [
@@ -45,9 +43,7 @@ const SHAPES = [];
   });
 }
 
-/* ============ 2. AZAR JUSTO Y VERIFICABLE ============
-   Math.random() no se puede fijar; este generador (mulberry32) sí: misma semilla,
-   misma partida. Cualquiera puede comprobar que no hace trampas. */
+/* ============ 2. SEEDS GENERATOR ============ */
 function hashSeed(str) { // texto -> número (FNV-1a)
   let h = 2166136261;
   for (const ch of str) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
@@ -63,9 +59,6 @@ function mulberry32(a) {
 }
 
 let rng, bag;
-// IMPORTANTE: esta función NO recibe el tablero, ni la puntuación, ni nada del jugador.
-// Reparte con "bolsa": se baraja todo el catálogo y se saca de uno en uno, así
-// ninguna pieza se repite en exceso. No puede adaptarse a cómo juegas.
 function nextPiece() {
   if (bag.length === 0) {
     bag = SHAPES.map((_, i) => i);
@@ -77,7 +70,7 @@ function nextPiece() {
   return SHAPES[bag.pop()];
 }
 
-/* ============ 3. REGLAS (sin nada de pantalla) ============ */
+/* ============ 3. REGLAS  ============ */
 let board, tray, score, best, combo, misses = 0, startBest = 0;
 try { best = +localStorage.getItem("best") || 0; } catch { /* localStorage puede fallar */ }
 
@@ -183,17 +176,6 @@ function buildBoard() {
     boardEl.append(d); cellEls.push(d);
   }
 }
-/*function drawBoard(ghost) { // ghost = {p, r, c}: vista previa mientras arrastras
-  cellEls.forEach((d, i) => {
-    const col = board[Math.floor(i / N)][i % N];
-    d.className = "c" + (col ? " on" : "");
-    d.style.setProperty("--col", col || "");
-  });
-  if (ghost) ghost.p.cells.forEach(([dr, dc]) => {
-    const d = cellEls[(ghost.r + dr) * N + ghost.c + dc];
-    d.classList.add("pre"); d.style.setProperty("--col", ghost.p.color);
-  });
-}*/
 function drawBoard(ghost) {
     const placed = new Set();
     const rows = new Set();
@@ -527,13 +509,13 @@ function celebrate(p, t, res, gained) {
 
   // 5. Carteles
   const bb = boardEl.getBoundingClientRect(), bx = bb.left + bb.width / 2, by = bb.top + bb.height / 2;
-  const names = ["", "", "¡DOBLE!", "¡TRIPLE!", "¡CUÁDRUPLE!"];
+  const names = ["", "", "DOUBLE!", "TRIPLE!", "QUADRUPLE!"];
   if (res.lines >= 2)
-    popText(names[res.lines] || "¡INCREÍBLE!", bx, by - 30, { size: 34 + res.lines * 3, color: "#fff", glow: p.color, ms: 1100, rise: 30 });
+    popText(names[res.lines] || "AMAZING!", bx, by - 30, { size: 34 + res.lines * 3, color: "#fff", glow: p.color, ms: 1100, rise: 30 });
   if (combo >= 2)
     popText("COMBO x" + combo, bx, by + 35, { size: 26 + Math.min(combo, 10) * 3, color: "#ffd166", glow: "#ef476f", ms: 1200, rise: 25 });
   if (res.allClear) {
-    popText("¡TABLERO LIMPIO!", bx, by - 95, { size: 42, color: "#ffd166", glow: "#ff9f1c", ms: 1600, rise: 20 });
+    popText("CLEAR!", bx, by - 95, { size: 42, color: "#ffd166", glow: "#ff9f1c", ms: 1600, rise: 20 });
     if (!calm) for (let k = 0; k < 6; k++)
       setTimeout(() => burst(bx + rand(-130, 130), by + rand(-130, 130), COLORS[k % COLORS.length], 14, 220), k * 90);
   }
